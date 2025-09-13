@@ -40,8 +40,8 @@ const API_BASE_URL = "https://web-production-db25e.up.railway.app";
 const ROBOT_ID = "77a2ca9f-b7b0-46cb-b732-3cf011b0a867";
 
 const voiceOptions = {
-  "masculina-profesional": { name: "Masculina", id: "ByVRQtaK1WDOvTmP1PKO" },
-  "femenina-suave": { name: "Femenina", id: "bN1bDXgDIGX5lw0rtY2B" }
+  "masculina-profesional": { name: "Masculina", id: "gBTPbHzRd0ZmV75Z5Zk4" },
+  "femenina-suave": { name: "Femenina", id: "9rvdnhrYoXoUt4igKpBw" }
 };
 
 const initialBotMessageContent =

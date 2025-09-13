@@ -504,12 +504,20 @@
   border-color: rgba(96, 165, 250, 0.4);
 }
 
+/* Hover para modo oscuro */
 .dark .interactive-card:hover {
   background: linear-gradient(135deg, rgba(45, 55, 72, 0.9) 0%, rgba(55, 65, 81, 0.7) 100%);
 }
 
+/* Hover general para modo claro (afecta al bot) */
 html:not(.dark) .interactive-card:hover {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%);
+}
+
+/* Hover específico para el mensaje del usuario en modo claro */
+html:not(.dark) .message-gradient-user-light:hover {
+  background: linear-gradient(135deg, #4b8df7 0%, #70b0fa 50%, #3573ec 100%);
+  background-size: 200% 200%;
 }
 
 .premium-button {
