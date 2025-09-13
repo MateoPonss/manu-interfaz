@@ -19,7 +19,7 @@ import {
   Sun,
   Moon,
   Menu,
-  Square // Importado para el botón de detener
+  Square
 } from "lucide-react";
 import {
   Select,
@@ -63,8 +63,8 @@ export default function ChatPage() {
   const [chatHistory, setChatHistory] = useState<string[]>([
     `Manu: ${initialBotMessageContent}`,
   ]);
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false); // Nuevo estado para el audio
-  const audioRef = useRef<HTMLAudioElement | null>(null); // Ref para el objeto de audio
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -248,64 +248,66 @@ export default function ChatPage() {
         </div>
       </header>
       
-      <main className="flex-1 flex flex-col overflow-y-hidden">
-        <ScrollArea className="flex-1" ref={scrollAreaRef}>
-          <div className="max-w-4xl mx-auto space-y-6 px-4 py-8 sm:px-6">
-            {messages.map((message, index) => (
-              <div key={message.id} className={`flex gap-4 ${message.sender === "user" ? "justify-end" : "justify-start"} slide-in`} style={{ animationDelay: `${index * 100}ms` }}>
-                {message.sender === "bot" && (
-                  <div className="w-10 h-10 rounded-full enhanced-gradient flex items-center justify-center flex-shrink-0 mt-1 logo-pulse-glow">
-                    <Image src="/robot-avatar.png" alt="Robot Avatar" width={24} height={24} />
+      <main className="flex-1 overflow-y-auto">
+          <div className="max-w-4xl mx-auto h-full">
+              <ScrollArea className="h-full" ref={scrollAreaRef}>
+                  <div className="space-y-6 px-4 py-8 sm:px-6">
+                      {messages.map((message, index) => (
+                          <div key={message.id} className={`flex gap-4 ${message.sender === "user" ? "justify-end" : "justify-start"} slide-in`} style={{ animationDelay: `${index * 100}ms` }}>
+                              {message.sender === "bot" && (
+                                  <div className="w-10 h-10 rounded-full enhanced-gradient flex items-center justify-center flex-shrink-0 mt-1 logo-pulse-glow">
+                                      <Image src="/robot-avatar.png" alt="Robot Avatar" width={24} height={24} />
+                                  </div>
+                              )}
+                              <Card className={`max-w-[85%] sm:max-w-[80%] p-4 shadow-sm interactive-card ${message.sender === "user" ? (isDarkMode ? "message-gradient-user" : "message-gradient-user-light") : (isDarkMode ? "message-gradient-bot" : "message-gradient-bot-light")}`}>
+                                  <p className="text-sm leading-relaxed text-pretty">{message.content}</p>
+                                  <div className={`text-xs mt-3 flex items-center gap-2 ${message.sender === "user" ? "text-current/70" : "text-muted-foreground"}`}>
+                                      <div className="w-2 h-2 rounded-full bg-current opacity-60 soft-pulse"></div>
+                                      {message.timestamp.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+                                      {message.sender === "bot" && (
+                                          <div className="flex items-center gap-2 ml-2">
+                                              {isAudioPlaying && (
+                                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-accent/80 hover:bg-accent/20" onClick={stopCurrentAudio}>
+                                                      <Square className="w-3 h-3" />
+                                                  </Button>
+                                              )}
+                                              <div className="flex gap-1 items-center">
+                                                  <div className="w-1 h-3 bg-accent/60 rounded voice-wave"></div>
+                                                  <div className="w-1 h-3 bg-accent/60 rounded voice-wave" style={{animationDelay: '0.2s'}}></div>
+                                                  <div className="w-1 h-3 bg-accent/60 rounded voice-wave" style={{animationDelay: '0.4s'}}></div>
+                                              </div>
+                                              <span className="text-xs text-accent/70">{voiceOptions[selectedVoiceKey as keyof typeof voiceOptions].name}</span>
+                                          </div>
+                                      )}
+                                  </div>
+                              </Card>
+                              {message.sender === "user" && (
+                                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-1">
+                                      <User className="w-5 h-5 text-muted-foreground" />
+                                  </div>
+                              )}
+                          </div>
+                      ))}
+                      {isLoading && (
+                          <div className="flex gap-4 justify-start slide-in">
+                              <div className="w-10 h-10 rounded-full enhanced-gradient flex items-center justify-center flex-shrink-0 mt-1 logo-pulse-glow">
+                                  <Image src="/robot-avatar.png" alt="Robot Avatar" width={24} height={24} />
+                              </div>
+                              <Card className="message-gradient-bot p-4 shadow-sm interactive-card">
+                                  <div className="flex items-center gap-3">
+                                      <div className="typing-indicator">
+                                          <div className="typing-dot"></div>
+                                          <div className="typing-dot"></div>
+                                          <div className="typing-dot"></div>
+                                      </div>
+                                      <span className="text-sm text-muted-foreground">Manu está generando una respuesta...</span>
+                                  </div>
+                              </Card>
+                          </div>
+                      )}
                   </div>
-                )}
-                <Card className={`max-w-[85%] sm:max-w-[80%] p-4 shadow-sm interactive-card ${message.sender === "user" ? (isDarkMode ? "message-gradient-user" : "message-gradient-user-light") : (isDarkMode ? "message-gradient-bot" : "message-gradient-bot-light")}`}>
-                  <p className="text-sm leading-relaxed text-pretty">{message.content}</p>
-                  <div className={`text-xs mt-3 flex items-center gap-2 ${message.sender === "user" ? "text-current/70" : "text-muted-foreground"}`}>
-                    <div className="w-2 h-2 rounded-full bg-current opacity-60 soft-pulse"></div>
-                    {message.timestamp.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
-                    {message.sender === "bot" && (
-                      <div className="flex items-center gap-2 ml-2">
-                        {isAudioPlaying && (
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-accent/80 hover:bg-accent/20" onClick={stopCurrentAudio}>
-                            <Square className="w-3 h-3" />
-                          </Button>
-                        )}
-                        <div className="flex gap-1 items-center">
-                          <div className="w-1 h-3 bg-accent/60 rounded voice-wave"></div>
-                          <div className="w-1 h-3 bg-accent/60 rounded voice-wave" style={{animationDelay: '0.2s'}}></div>
-                          <div className="w-1 h-3 bg-accent/60 rounded voice-wave" style={{animationDelay: '0.4s'}}></div>
-                        </div>
-                        <span className="text-xs text-accent/70">{voiceOptions[selectedVoiceKey as keyof typeof voiceOptions].name}</span>
-                      </div>
-                    )}
-                  </div>
-                </Card>
-                {message.sender === "user" && (
-                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-1">
-                    <User className="w-5 h-5 text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-            ))}
-            {isLoading && (
-              <div className="flex gap-4 justify-start slide-in">
-                <div className="w-10 h-10 rounded-full enhanced-gradient flex items-center justify-center flex-shrink-0 mt-1 logo-pulse-glow">
-                  <Image src="/robot-avatar.png" alt="Robot Avatar" width={24} height={24} />
-                </div>
-                <Card className="message-gradient-bot p-4 shadow-sm interactive-card">
-                  <div className="flex items-center gap-3">
-                    <div className="typing-indicator">
-                      <div className="typing-dot"></div>
-                      <div className="typing-dot"></div>
-                      <div className="typing-dot"></div>
-                    </div>
-                    <span className="text-sm text-muted-foreground">Manu está generando una respuesta...</span>
-                  </div>
-                </Card>
-              </div>
-            )}
+              </ScrollArea>
           </div>
-        </ScrollArea>
       </main>
 
       <footer className={`border-t border-border/50 sticky bottom-0 z-10 ${isDarkMode ? "dark-theme-glass" : "light-theme-glass"}`}>
