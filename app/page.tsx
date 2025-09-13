@@ -38,20 +38,8 @@ const API_BASE_URL = "https://web-production-db25e.up.railway.app";
 const ROBOT_ID = "77a2ca9f-b7b0-46cb-b732-3cf011b0a867";
 
 const voiceOptions = {
-  "femenina-suave": { name: "Femenina Suave", id: "bN1bDXgDIGX5lw0rtY2B" },
-  "masculina-profesional": {
-    name: "Masculina Profesional",
-    id: "voice_id_masculino_aqui",
-  },
-  "neutral-cientifica": {
-    name: "Neutral Científica",
-    id: "voice_id_neutral_aqui",
-  },
-  "joven-dinamica": { name: "Joven Dinámica", id: "voice_id_joven_aqui" },
-  "robotica-futurista": {
-    name: "Robótica Futurista",
-    id: "voice_id_robot_aqui",
-  },
+  "masculina-profesional": {name: "Masculina", id: "ByVRQtaK1WDOvTmP1PKO",},
+  "femenina-suave": { name: "Femenina", id: "bN1bDXgDIGX5lw0rtY2B" }
 };
 
 const initialBotMessageContent =
