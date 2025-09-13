@@ -2,13 +2,13 @@
 
 import type React from "react";
 import { useState, useRef, useEffect } from "react";
+import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Send,
-  Bot,
   User,
   Sparkles,
   Brain,
@@ -56,7 +56,7 @@ export default function ChatPage() {
   ]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedVoiceKey, setSelectedVoiceKey] = useState("femenina-suave");
+  const [selectedVoiceKey, setSelectedVoiceKey] = useState("masculina-profesional");
   const [isDarkMode, setIsDarkMode] = useState(true);
 
   // --- (MODIFICADO 1) El historial es ahora un arreglo de strings ---
@@ -235,7 +235,7 @@ export default function ChatPage() {
             <div className="flex items-center gap-3">
               <div className="relative">
                 <div className="w-12 h-12 rounded-full enhanced-gradient flex items-center justify-center shadow-md logo-pulse-glow">
-                  <Bot className="w-6 h-6 text-white" />
+                  <Image src="/robot-avatar.png" alt="Robot Avatar" width={32} height={32} />
                 </div>
                 <div className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-accent rounded-full border-2 border-background soft-pulse"></div>
               </div>
@@ -316,7 +316,7 @@ export default function ChatPage() {
               >
                 {message.sender === "bot" && (
                   <div className="w-10 h-10 rounded-full enhanced-gradient flex items-center justify-center flex-shrink-0 mt-1 logo-pulse-glow">
-                    <Bot className="w-5 h-5 text-white" />
+                     <Image src="/robot-avatar.png" alt="Robot Avatar" width={24} height={24} />
                   </div>
                 )}
 
@@ -377,7 +377,7 @@ export default function ChatPage() {
             {isLoading && (
               <div className="flex gap-4 justify-start slide-in">
                 <div className="w-10 h-10 rounded-full enhanced-gradient flex items-center justify-center flex-shrink-0 mt-1 logo-pulse-glow">
-                  <Bot className="w-5 h-5 text-white" />
+                  <Image src="/robot-avatar.png" alt="Robot Avatar" width={24} height={24} />
                 </div>
                 <Card className="message-gradient-bot p-4 shadow-sm interactive-card">
                   <div className="flex items-center gap-3">
