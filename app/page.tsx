@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Send,
   User,
@@ -17,6 +18,7 @@ import {
   Volume2,
   Sun,
   Moon,
+  Menu
 } from "lucide-react";
 import {
   Select,
@@ -33,12 +35,11 @@ interface Message {
   timestamp: Date;
 }
 
-// --- Constantes de la API ---
 const API_BASE_URL = "https://web-production-db25e.up.railway.app";
 const ROBOT_ID = "77a2ca9f-b7b0-46cb-b732-3cf011b0a867";
 
 const voiceOptions = {
-  "masculina-profesional": {name: "Masculina", id: "ByVRQtaK1WDOvTmP1PKO",},
+  "masculina-profesional": { name: "Masculina", id: "ByVRQtaK1WDOvTmP1PKO" },
   "femenina-suave": { name: "Femenina", id: "bN1bDXgDIGX5lw0rtY2B" }
 };
 
@@ -58,14 +59,11 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedVoiceKey, setSelectedVoiceKey] = useState("masculina-profesional");
   const [isDarkMode, setIsDarkMode] = useState(true);
-
-  // --- (MODIFICADO 1) El historial es ahora un arreglo de strings ---
   const [chatHistory, setChatHistory] = useState<string[]>([
     `Manu: ${initialBotMessageContent}`,
   ]);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -77,9 +75,13 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+      const scrollableNode = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
+      if (scrollableNode) {
+        scrollableNode.scrollTop = scrollableNode.scrollHeight;
+      }
     }
-  }, [messages]);
+  }, [messages, isLoading]);
+
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
@@ -100,14 +102,8 @@ export default function ChatPage() {
     setInputValue("");
     setIsLoading(true);
 
-    const voiceId =
-      voiceOptions[selectedVoiceKey as keyof typeof voiceOptions].id;
-
-    // --- (MODIFICADO 2) Preparar el historial de strings para la API ---
-    const historyForAPI: string[] = [
-      ...chatHistory,
-      `Usuario: ${currentInputValue}`,
-    ];
+    const voiceId = voiceOptions[selectedVoiceKey as keyof typeof voiceOptions].id;
+    const historyForAPI: string[] = [...chatHistory, `Usuario: ${currentInputValue}`];
 
     try {
       const textResponse = await fetch(`${API_BASE_URL}/generate-response`, {
@@ -115,20 +111,16 @@ export default function ChatPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           robot_id: ROBOT_ID,
-          history: historyForAPI, // <-- Se envía el array de strings
+          history: historyForAPI,
           voice_id: voiceId,
         }),
       });
 
       if (!textResponse.ok) {
-        const errorBody = await textResponse.text();
-        throw new Error(
-          `Error en Paso 1 (${textResponse.status}): ${errorBody}`
-        );
+        throw new Error(`Error en la API: ${textResponse.statusText}`);
       }
 
       const data = await textResponse.json();
-
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         content: data.text,
@@ -136,41 +128,21 @@ export default function ChatPage() {
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, botMessage]);
-
-      // --- (MODIFICADO 3) Actualizar el historial con las nuevas strings ---
-      setChatHistory((prev) => [
-        ...prev,
-        `Usuario: ${currentInputValue}`,
-        `Manu: ${data.text}`,
-      ]);
+      setChatHistory((prev) => [...prev, `Usuario: ${currentInputValue}`, `Manu: ${data.text}`]);
 
       if (data.audio_url) {
-        try {
-          console.log(`Paso 2: Pidiendo audio desde ${data.audio_url}`);
-          const audioResponse = await fetch(`${API_BASE_URL}${data.audio_url}`);
-
-          if (!audioResponse.ok) {
-            console.error(
-              `Error en Paso 2 al obtener el audio (${audioResponse.status})`
-            );
-          } else {
-            const audioBlob = await audioResponse.blob();
-            const audio = new Audio(URL.createObjectURL(audioBlob));
-            console.log("Reproduciendo audio...");
-            await audio.play();
-          }
-        } catch (audioError) {
-          console.error("Error al procesar o reproducir el audio:", audioError);
+        const audioResponse = await fetch(`${API_BASE_URL}${data.audio_url}`);
+        if (audioResponse.ok) {
+          const audioBlob = await audioResponse.blob();
+          const audio = new Audio(URL.createObjectURL(audioBlob));
+          await audio.play();
         }
-      } else {
-        console.log("No se recibió URL de audio, se mostrará solo el texto.");
       }
     } catch (error) {
-      console.error("Error durante el proceso completo:", error);
+      console.error("Error al enviar mensaje:", error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content:
-          "Lo siento, ha ocurrido un error al contactar al servidor. Por favor, intenta de nuevo más tarde.",
+        content: "Lo siento, ha ocurrido un error. Por favor, intenta de nuevo.",
         sender: "bot",
         timestamp: new Date(),
       };
@@ -187,50 +159,45 @@ export default function ChatPage() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* ... El resto de tu JSX permanece exactamente igual ... */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 text-accent/30 neural-network">
-          <Brain size={50} />
-        </div>
-        <div
-          className="absolute top-32 right-16 text-muted-foreground/25 data-flow"
-          style={{ animationDelay: "1s" }}
-        >
-          <Cpu size={45} />
-        </div>
-        <div
-          className="absolute bottom-40 left-16 text-accent/20 floating-particles"
-          style={{ animationDelay: "2s" }}
-        >
-          <Sparkles size={40} />
-        </div>
-        <div
-          className="absolute bottom-24 right-12 text-muted-foreground/30 neural-network"
-          style={{ animationDelay: "0.5s" }}
-        >
-          <Zap size={35} />
-        </div>
-        <div
-          className="absolute top-1/2 left-1/4 text-accent/15 data-flow"
-          style={{ animationDelay: "3s" }}
-        >
-          <Brain size={30} />
-        </div>
-        <div
-          className="absolute top-1/3 right-1/4 text-muted-foreground/20 floating-particles"
-          style={{ animationDelay: "1.5s" }}
-        >
-          <Sparkles size={25} />
-        </div>
-      </div>
-      <header
-        className={`border-b border-border/50 sticky top-0 z-10 backdrop-blur-md rounded-b-2xl ${
-          isDarkMode ? "dark-theme-glass" : "light-theme-glass"
-        }`}
+  const HeaderControls = () => (
+    <div className="flex flex-col sm:flex-row items-center gap-3">
+      <Button
+        onClick={toggleTheme}
+        variant="outline"
+        size="sm"
+        className="theme-toggle-button gap-2 h-8 px-3 bg-transparent w-full sm:w-auto"
       >
-        <div className="max-w-3xl mx-auto px-4 py-3">
+        {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        <span className="text-xs">{isDarkMode ? "Día" : "Noche"}</span>
+      </Button>
+
+      <div className="flex items-center gap-2 w-full sm:w-auto">
+        <Volume2 className="w-4 h-4 text-muted-foreground" />
+        <Select value={selectedVoiceKey} onValueChange={setSelectedVoiceKey}>
+          <SelectTrigger className="w-full sm:w-32 h-8 text-xs border-border/50">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(voiceOptions).map(([key, { name }]) => (
+              <SelectItem key={key} value={key}>{name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 text-accent/30 neural-network"><Brain size={50} /></div>
+        <div className="absolute top-32 right-16 text-muted-foreground/25 data-flow" style={{ animationDelay: "1s" }}><Cpu size={45} /></div>
+        <div className="absolute bottom-40 left-16 text-accent/20 floating-particles" style={{ animationDelay: "2s" }}><Sparkles size={40} /></div>
+        <div className="absolute bottom-24 right-12 text-muted-foreground/30 neural-network" style={{ animationDelay: "0.5s" }}><Zap size={35} /></div>
+      </div>
+
+      <header className={`border-b border-border/50 sticky top-0 z-20 backdrop-blur-md ${isDarkMode ? "dark-theme-glass" : "light-theme-glass"}`}>
+        <div className="max-w-4xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="relative">
@@ -242,203 +209,115 @@ export default function ChatPage() {
               <div>
                 <h1 className="text-xl font-bold text-primary">Manu</h1>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Brain className="w-3 h-3 text-accent neural-network" />
-                  IA • LuminaLab
+                  <Brain className="w-3 h-3 text-accent neural-network" />IA • LuminaLab
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={toggleTheme}
-                variant="outline"
-                size="sm"
-                className="theme-toggle-button gap-2 h-8 px-3 bg-transparent"
-              >
-                {isDarkMode ? (
-                  <>
-                    <Sun className="w-4 h-4" />
-                    <span className="text-xs">Día</span>
-                  </>
-                ) : (
-                  <>
-                    <Moon className="w-4 h-4" />
-                    <span className="text-xs">Noche</span>
-                  </>
-                )}
-              </Button>
+            <div className="hidden md:flex items-center gap-3">
+              <HeaderControls />
+            </div>
 
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full enhanced-gradient flex items-center justify-center logo-pulse-glow">
-                  <Sparkles className="w-4 h-4 text-white sparkle-dance" />
-                </div>
-                <div className="text-sm font-semibold text-primary">
-                  LuminaLab
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Volume2 className="w-4 h-4 text-muted-foreground" />
-                <Select
-                  value={selectedVoiceKey}
-                  onValueChange={setSelectedVoiceKey}
-                >
-                  <SelectTrigger
-                    className={`w-32 h-8 text-xs border-border/50 ${
-                      isDarkMode ? "dark-theme-glass" : "light-theme-glass"
-                    }`}
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(voiceOptions).map(([key, { name }]) => (
-                      <SelectItem key={key} value={key}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="md:hidden">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon"><Menu className="w-5 h-5" /></Button>
+                </SheetTrigger>
+                <SheetContent>
+                  <div className="flex flex-col gap-4 mt-8">
+                    <HeaderControls />
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
         </div>
       </header>
-      <div className="flex-1 max-w-4xl mx-auto w-full px-6 py-8">
-        <ScrollArea className="h-[calc(100vh-260px)]" ref={scrollAreaRef}>
-          <div className="space-y-6 pb-6">
-            {messages.map((message, index) => (
-              <div
-                key={message.id}
-                className={`flex gap-4 ${
-                  message.sender === "user" ? "justify-end" : "justify-start"
-                } slide-in`}
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                {message.sender === "bot" && (
-                  <div className="w-10 h-10 rounded-full enhanced-gradient flex items-center justify-center flex-shrink-0 mt-1 logo-pulse-glow">
-                     <Image src="/robot-avatar.png" alt="Robot Avatar" width={24} height={24} />
+      
+      <main className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 w-full max-w-4xl mx-auto overflow-hidden">
+              <ScrollArea className="h-full" ref={scrollAreaRef}>
+                  <div className="space-y-6 px-4 py-8 sm:px-6">
+                      {messages.map((message, index) => (
+                          <div key={message.id} className={`flex gap-4 ${message.sender === "user" ? "justify-end" : "justify-start"} slide-in`} style={{ animationDelay: `${index * 100}ms` }}>
+                              {message.sender === "bot" && (
+                                  <div className="w-10 h-10 rounded-full enhanced-gradient flex items-center justify-center flex-shrink-0 mt-1 logo-pulse-glow">
+                                      <Image src="/robot-avatar.png" alt="Robot Avatar" width={24} height={24} />
+                                  </div>
+                              )}
+                              <Card className={`max-w-[85%] sm:max-w-[80%] p-4 shadow-sm interactive-card ${message.sender === "user" ? (isDarkMode ? "message-gradient-user" : "message-gradient-user-light") : (isDarkMode ? "message-gradient-bot" : "message-gradient-bot-light")}`}>
+                                  <p className="text-sm leading-relaxed text-pretty">{message.content}</p>
+                                  <div className={`text-xs mt-3 flex items-center gap-2 ${message.sender === "user" ? "text-current/70" : "text-muted-foreground"}`}>
+                                      <div className="w-2 h-2 rounded-full bg-current opacity-60 soft-pulse"></div>
+                                      {message.timestamp.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+                                      {message.sender === "bot" && (
+                                          <div className="flex items-center gap-1 ml-2">
+                                              <div className="flex gap-1">
+                                                  <div className="w-1 h-3 bg-accent/60 rounded voice-wave"></div>
+                                                  <div className="w-1 h-3 bg-accent/60 rounded voice-wave"></div>
+                                                  <div className="w-1 h-3 bg-accent/60 rounded voice-wave"></div>
+                                                  <div className="w-1 h-3 bg-accent/60 rounded voice-wave"></div>
+                                              </div>
+                                              <span className="text-xs text-accent/70">{voiceOptions[selectedVoiceKey as keyof typeof voiceOptions].name}</span>
+                                          </div>
+                                      )}
+                                  </div>
+                              </Card>
+                              {message.sender === "user" && (
+                                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-1">
+                                      <User className="w-5 h-5 text-muted-foreground" />
+                                  </div>
+                              )}
+                          </div>
+                      ))}
+                      {isLoading && (
+                          <div className="flex gap-4 justify-start slide-in">
+                              <div className="w-10 h-10 rounded-full enhanced-gradient flex items-center justify-center flex-shrink-0 mt-1 logo-pulse-glow">
+                                  <Image src="/robot-avatar.png" alt="Robot Avatar" width={24} height={24} />
+                              </div>
+                              <Card className="message-gradient-bot p-4 shadow-sm interactive-card">
+                                  <div className="flex items-center gap-3">
+                                      <div className="typing-indicator">
+                                          <div className="typing-dot"></div>
+                                          <div className="typing-dot"></div>
+                                          <div className="typing-dot"></div>
+                                      </div>
+                                      <span className="text-sm text-muted-foreground">Manu está generando una respuesta...</span>
+                                  </div>
+                              </Card>
+                          </div>
+                      )}
                   </div>
-                )}
-
-                <Card
-                  className={`max-w-[80%] p-4 shadow-sm interactive-card ${
-                    message.sender === "user"
-                      ? isDarkMode
-                        ? "message-gradient-user"
-                        : "message-gradient-user-light"
-                      : isDarkMode
-                      ? "message-gradient-bot"
-                      : "message-gradient-bot-light"
-                  }`}
-                >
-                  <p className="text-sm leading-relaxed text-pretty">
-                    {message.content}
-                  </p>
-                  <div
-                    className={`text-xs mt-3 flex items-center gap-2 ${
-                      message.sender === "user"
-                        ? "text-current/70"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    <div className="w-2 h-2 rounded-full bg-current opacity-60 soft-pulse"></div>
-                    {message.timestamp.toLocaleTimeString("es-ES", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                    {message.sender === "bot" && (
-                      <div className="flex items-center gap-1 ml-2">
-                        <div className="flex gap-1">
-                          <div className="w-1 h-3 bg-accent/60 rounded voice-wave"></div>
-                          <div className="w-1 h-3 bg-accent/60 rounded voice-wave"></div>
-                          <div className="w-1 h-3 bg-accent/60 rounded voice-wave"></div>
-                          <div className="w-1 h-3 bg-accent/60 rounded voice-wave"></div>
-                        </div>
-                        <span className="text-xs text-accent/70">
-                          {
-                            voiceOptions[
-                              selectedVoiceKey as keyof typeof voiceOptions
-                            ].name
-                          }
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </Card>
-
-                {message.sender === "user" && (
-                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-1">
-                    <User className="w-5 h-5 text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {isLoading && (
-              <div className="flex gap-4 justify-start slide-in">
-                <div className="w-10 h-10 rounded-full enhanced-gradient flex items-center justify-center flex-shrink-0 mt-1 logo-pulse-glow">
-                  <Image src="/robot-avatar.png" alt="Robot Avatar" width={24} height={24} />
-                </div>
-                <Card className="message-gradient-bot p-4 shadow-sm interactive-card">
-                  <div className="flex items-center gap-3">
-                    <div className="typing-indicator">
-                      <div className="typing-dot"></div>
-                      <div className="typing-dot"></div>
-                      <div className="typing-dot"></div>
-                    </div>
-                    <span className="text-sm text-muted-foreground">
-                      Manu está generando una respuesta...
-                    </span>
-                  </div>
-                </Card>
-              </div>
-            )}
+              </ScrollArea>
           </div>
-        </ScrollArea>
-      </div>
+      </main>
 
-      <div
-        className={`border-t border-border ${
-          isDarkMode ? "dark-theme-glass" : "light-theme-glass"
-        }`}
-      >
-        <div className="max-w-4xl mx-auto px-6 py-4">
+      <footer className={`border-t border-border/50 sticky bottom-0 z-10 ${isDarkMode ? "dark-theme-glass" : "light-theme-glass"}`}>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex gap-3">
             <div className="flex-1 relative">
               <Input
-                ref={inputRef}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Escribe tu pregunta aquí..."
-                className={`pr-12 h-12 text-sm border-border/50 ${
-                  isDarkMode ? "dark-theme-glass" : "light-theme-glass"
-                }`}
+                className="pr-12 h-12 text-sm border-border/50"
                 disabled={isLoading}
               />
-              {inputValue && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <Brain className="w-4 h-4 text-accent neural-network" />
-                </div>
-              )}
+              {inputValue && <div className="absolute right-3 top-1/2 -translate-y-1/2"><Brain className="w-4 h-4 text-accent neural-network" /></div>}
             </div>
-            <Button
-              onClick={handleSendMessage}
-              disabled={!inputValue.trim() || isLoading}
-              className="gap-2 h-12 px-6 enhanced-gradient hover-lift premium-button"
-            >
+            <Button onClick={handleSendMessage} disabled={!inputValue.trim() || isLoading} className="gap-2 h-12 px-6 enhanced-gradient hover-lift premium-button">
               <Send className="w-4 h-4" />
-              Enviar
+              <span className="hidden sm:inline">Enviar</span>
             </Button>
           </div>
-          <div className="text-xs text-muted-foreground mt-3 text-center flex items-center justify-center gap-2">
+          <p className="text-xs text-muted-foreground mt-3 text-center flex items-center justify-center gap-2">
             <Cpu className="w-3 h-3 neural-network" />
-            Manu utiliza inteligencia artificial. Verifica información
-            importante para tu investigación.
+            <span>Manu utiliza IA. Verifica información importante.</span>
             <Sparkles className="w-3 h-3 floating-particles" />
-          </div>
+          </p>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }

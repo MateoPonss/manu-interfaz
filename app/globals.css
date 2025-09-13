@@ -500,9 +500,16 @@
 
 .interactive-card:hover {
   transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 12px 32px rgba(79, 124, 255, 0.3);
-  border-color: rgba(96, 165, 250, 0.6);
+  box-shadow: 0 12px 32px rgba(79, 124, 255, 0.2);
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
+.dark .interactive-card:hover {
   background: linear-gradient(135deg, rgba(45, 55, 72, 0.9) 0%, rgba(55, 65, 81, 0.7) 100%);
+}
+
+html:not(.dark) .interactive-card:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%);
 }
 
 .premium-button {
