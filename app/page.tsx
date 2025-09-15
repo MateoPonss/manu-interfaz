@@ -34,21 +34,14 @@ interface Message {
   content: string;
   sender: "user" | "bot";
   timestamp: Date;
-  voiceUsed?: string;
 }
 
 const API_BASE_URL = "https://web-production-db25e.up.railway.app";
 const ROBOT_ID = "77a2ca9f-b7b0-46cb-b732-3cf011b0a867";
 
-const elevenLabsVoices = {
-  "masculina-profesional": { name: "Masculina (ElevenLabs)", id: "ByVRQtaK1WDOvTmP1PKO" },
-  "femenina-suave": { name: "Femenina (ElevenLabs)", id: "9rvdnhrYoXoUt4igKpBw" }
-};
-
-// Voces de respaldo de Gemini. IDs ficticios, en una implementación real se usarían los de una API.
-const geminiVoices = {
-  "gemini-charon": { name: "Charon (Gemini)", id: "gemini-charon-id" },
-  "gemini-female": { name: "Femenina (Gemini)", id: "gemini-female-id" }
+const voiceOptions = {
+  "masculina-profesional": { name: "Masculina", id: "ByVRQtaK1WDOvTmP1PKO" },
+  "femenina-suave": { name: "Femenina", id: "9rvdnhrYoXoUt4igKpBw" }
 };
 
 const initialBotMessageContent =
@@ -61,7 +54,6 @@ export default function ChatPage() {
       content: initialBotMessageContent,
       sender: "bot",
       timestamp: new Date(),
-      voiceUsed: elevenLabsVoices["masculina-profesional"].name,
     },
   ]);
   const [inputValue, setInputValue] = useState("");
@@ -74,7 +66,6 @@ export default function ChatPage() {
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const [useGeminiFallback, setUseGeminiFallback] = useState(false);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -122,36 +113,21 @@ export default function ChatPage() {
     setInputValue("");
     setIsLoading(true);
 
-    let voiceId;
-    let voiceName;
-    let apiEndpoint;
-
-    // Determinar qué servicio de voz usar
-    if (useGeminiFallback) {
-      const geminiVoiceKey = selectedVoiceKey === "masculina-profesional" ? "gemini-charon" : "gemini-female";
-      voiceId = geminiVoices[geminiVoiceKey as keyof typeof geminiVoices].id;
-      voiceName = geminiVoices[geminiVoiceKey as keyof typeof geminiVoices].name;
-      apiEndpoint = `${API_BASE_URL}/generate-response-gemini`;
-    } else {
-      voiceId = elevenLabsVoices[selectedVoiceKey as keyof typeof elevenLabsVoices].id;
-      voiceName = elevenLabsVoices[selectedVoiceKey as keyof typeof elevenLabsVoices].name;
-      apiEndpoint = `${API_BASE_URL}/generate-response`;
-    }
+    const voiceId = voiceOptions[selectedVoiceKey as keyof typeof voiceOptions].id;
+    const historyForAPI: string[] = [...chatHistory, `Usuario: ${currentInputValue}`];
 
     try {
-      const textResponse = await fetch(apiEndpoint, {
+      const textResponse = await fetch(`${API_BASE_URL}/generate-response`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           robot_id: ROBOT_ID,
-          history: [...chatHistory, `Usuario: ${currentInputValue}`],
+          history: historyForAPI,
           voice_id: voiceId,
         }),
       });
 
-      if (!textResponse.ok) {
-        throw new Error(`Error en la API de voz: ${textResponse.statusText}`);
-      }
+      if (!textResponse.ok) throw new Error(`Error en la API: ${textResponse.statusText}`);
 
       const data = await textResponse.json();
       const botMessage: Message = {
@@ -159,60 +135,33 @@ export default function ChatPage() {
         content: data.text,
         sender: "bot",
         timestamp: new Date(),
-        voiceUsed: voiceName,
       };
       setMessages((prev) => [...prev, botMessage]);
       setChatHistory((prev) => [...prev, `Usuario: ${currentInputValue}`, `Manu: ${data.text}`]);
 
       if (data.audio_url) {
-        try {
-          const audioResponse = await fetch(`${API_BASE_URL}${data.audio_url}`);
-          if (audioResponse.ok) {
-            const audioBlob = await audioResponse.blob();
-            const audio = new Audio(URL.createObjectURL(audioBlob));
-            audioRef.current = audio;
-            
-            audio.onplay = () => setIsAudioPlaying(true);
-            audio.onended = () => setIsAudioPlaying(false);
-            audio.onpause = () => setIsAudioPlaying(false);
+        const audioResponse = await fetch(`${API_BASE_URL}${data.audio_url}`);
+        if (audioResponse.ok) {
+          const audioBlob = await audioResponse.blob();
+          const audio = new Audio(URL.createObjectURL(audioBlob));
+          audioRef.current = audio;
+          
+          audio.onplay = () => setIsAudioPlaying(true);
+          audio.onended = () => setIsAudioPlaying(false);
+          audio.onpause = () => setIsAudioPlaying(false);
 
-            await audio.play();
-          }
-        } catch (audioError) {
-          console.error("Error reproduciendo audio:", audioError);
+          await audio.play();
         }
       }
     } catch (error) {
       console.error("Error al enviar mensaje:", error);
-      if (!useGeminiFallback) {
-        // Primer error, activamos el modo de respaldo y actualizamos la voz
-        setUseGeminiFallback(true);
-        const geminiVoiceKey = selectedVoiceKey === "masculina-profesional" ? "gemini-charon" : "gemini-female";
-        setSelectedVoiceKey(geminiVoiceKey);
-        
-        // Mensaje temporal para informar al usuario y re-intentar la llamada
-        const tempMessage: Message = {
-          id: (Date.now() + 2).toString(),
-          content: "Hubo un error con el servicio de voz principal. Intentando con la voz de Gemini...",
-          sender: "bot",
-          timestamp: new Date(),
-          voiceUsed: "Error",
-        };
-        setMessages((prev) => [...prev, tempMessage]);
-        
-        // Re-intentamos el envío del mensaje con la nueva configuración
-        await handleSendMessage();
-      } else {
-        // El modo de respaldo ya estaba activo y también falló
-        const errorMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          content: "Lo siento, ha ocurrido un error al generar la respuesta con la voz de respaldo. Por favor, intenta de nuevo.",
-          sender: "bot",
-          timestamp: new Date(),
-          voiceUsed: "Error",
-        };
-        setMessages((prev) => [...prev, errorMessage]);
-      }
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "Lo siento, ha ocurrido un error. Por favor, intenta de nuevo.",
+        sender: "bot",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -238,19 +187,12 @@ export default function ChatPage() {
       </Button>
       <div className="flex items-center gap-2 w-full sm:w-auto">
         <Volume2 className="w-5 h-5 text-muted-foreground" />
-        <Select 
-            value={selectedVoiceKey} 
-            onValueChange={setSelectedVoiceKey}
-            disabled={useGeminiFallback}
-        >
+        <Select value={selectedVoiceKey} onValueChange={setSelectedVoiceKey}>
           <SelectTrigger className="w-full sm:w-36 h-9 text-sm border-border/50">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {Object.entries(elevenLabsVoices).map(([key, { name }]) => (
-              <SelectItem key={key} value={key}>{name}</SelectItem>
-            ))}
-            {Object.entries(geminiVoices).map(([key, { name }]) => (
+            {Object.entries(voiceOptions).map(([key, { name }]) => (
               <SelectItem key={key} value={key}>{name}</SelectItem>
             ))}
           </SelectContent>
@@ -322,7 +264,7 @@ export default function ChatPage() {
                                   <div className={`text-xs mt-3 flex items-center gap-2 ${message.sender === "user" ? "text-current/70" : "text-muted-foreground"}`}>
                                       <div className="w-2 h-2 rounded-full bg-current opacity-60 soft-pulse"></div>
                                       {message.timestamp.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
-                                      {message.sender === "bot" && message.voiceUsed && (
+                                      {message.sender === "bot" && (
                                           <div className="flex items-center gap-2 ml-2">
                                               {isAudioPlaying && (
                                                   <Button variant="ghost" size="icon" className="h-6 w-6 text-accent/80 hover:bg-accent/20" onClick={stopCurrentAudio}>
@@ -334,7 +276,7 @@ export default function ChatPage() {
                                                   <div className="w-1 h-3 bg-accent/60 rounded voice-wave" style={{animationDelay: '0.2s'}}></div>
                                                   <div className="w-1 h-3 bg-accent/60 rounded voice-wave" style={{animationDelay: '0.4s'}}></div>
                                               </div>
-                                              <span className="text-xs text-accent/70">{message.voiceUsed}</span>
+                                              <span className="text-xs text-accent/70">{voiceOptions[selectedVoiceKey as keyof typeof voiceOptions].name}</span>
                                           </div>
                                       )}
                                   </div>
